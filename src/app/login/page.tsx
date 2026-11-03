@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Zap, AlertCircle } from 'lucide-react';
@@ -17,6 +17,31 @@ export default function AffiliateLoginPage() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // If already authenticated, redirect immediately to dashboard
+    try {
+      const stored =
+        localStorage.getItem('affiliate_user') || sessionStorage.getItem('affiliate_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u && (u._id || u.id || u.role === 'affiliate_partner')) {
+          router.replace('/dashboard');
+          return;
+        }
+      }
+    } catch {}
+
+    affiliateApi
+      .get('/me')
+      .then((res) => {
+        if (res.data?.data?.user) {
+          localStorage.setItem('affiliate_user', JSON.stringify(res.data.data.user));
+          router.replace('/dashboard');
+        }
+      })
+      .catch(() => {});
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -71,6 +71,13 @@ export default function AffiliateDashboardLayout({
     } catch (err: any) {
       if (err?.response?.status === 401) {
         clearAffiliateCache();
+        try {
+          await affiliateApi.post('/logout');
+        } catch {}
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('affiliate_user');
+          sessionStorage.removeItem('affiliate_user');
+        }
         router.replace('/login');
       }
     } finally {

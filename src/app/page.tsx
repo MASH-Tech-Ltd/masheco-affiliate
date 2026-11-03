@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
   CheckCircle2,
@@ -16,8 +17,34 @@ import { useAffiliateLang } from '@/context/LanguageContext';
 import { affiliateApi } from '@/utils/affiliateApi';
 
 export default function AffiliateLandingPage() {
+  const router = useRouter();
   const { lang, setLang, t } = useAffiliateLang();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    // If user is already logged in, redirect directly to dashboard
+    try {
+      const stored =
+        localStorage.getItem('affiliate_user') || sessionStorage.getItem('affiliate_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u && (u._id || u.id || u.role === 'affiliate_partner')) {
+          router.replace('/dashboard');
+          return;
+        }
+      }
+    } catch {}
+
+    affiliateApi
+      .get('/me')
+      .then((res) => {
+        if (res.data?.data?.user) {
+          localStorage.setItem('affiliate_user', JSON.stringify(res.data.data.user));
+          router.replace('/dashboard');
+        }
+      })
+      .catch(() => {});
+  }, [router]);
   const [config, setConfig] = useState({
     defaultCommissionRate: 30,
     commissionDurationMonths: 6,

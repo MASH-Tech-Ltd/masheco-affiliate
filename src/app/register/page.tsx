@@ -26,6 +26,31 @@ export default function AffiliateRegisterPage() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    // If already authenticated, redirect immediately to dashboard
+    try {
+      const stored =
+        localStorage.getItem('affiliate_user') || sessionStorage.getItem('affiliate_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u && (u._id || u.id || u.role === 'affiliate_partner')) {
+          router.replace('/dashboard');
+          return;
+        }
+      }
+    } catch {}
+
+    affiliateApi
+      .get('/me')
+      .then((res) => {
+        if (res.data?.data?.user) {
+          localStorage.setItem('affiliate_user', JSON.stringify(res.data.data.user));
+          router.replace('/dashboard');
+        }
+      })
+      .catch(() => {});
+  }, [router]);
+
   const [form, setForm] = useState({
     name: '',
     email: '',
