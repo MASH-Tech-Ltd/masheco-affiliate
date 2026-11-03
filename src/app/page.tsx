@@ -53,8 +53,9 @@ export default function AffiliateLandingPage() {
   const merchantBaseUrl =
     rawMerchantUrl.replace(/\/register\/?$/, '').replace(/\/$/, '') ||
     'https://merchant.masheco.com';
-  const mainLandingUrl =
-    process.env.NEXT_PUBLIC_MAIN_LANDING_URL || 'https://masheco.com';
+  const mainLandingUrl = (
+    process.env.NEXT_PUBLIC_MAIN_LANDING_URL || 'https://www.masheco.com'
+  ).replace(/\/$/, '');
 
   const affiliateServiceJsonLd = {
     '@context': 'https://schema.org',
@@ -545,12 +546,12 @@ export default function AffiliateLandingPage() {
                       href={merchantBaseUrl}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
-                      {lang === 'bn' ? 'মার্চেন্ট ল্যান্ডিং পেজ' : 'Merchant Landing Page'}
+                      {lang === 'bn' ? 'মার্চেন্ট পোর্টাল' : 'Merchant Portal'}
                     </a>
                   </li>
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/landing/about-us`}
+                      href={`${mainLandingUrl}/landing/about-us`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About Us'}
@@ -558,7 +559,7 @@ export default function AffiliateLandingPage() {
                   </li>
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/landing/blog`}
+                      href={`${mainLandingUrl}/landing/blog`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'ব্লগ' : 'Blog'}
@@ -566,7 +567,7 @@ export default function AffiliateLandingPage() {
                   </li>
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/landing/contact`}
+                      href={`${mainLandingUrl}/landing/contact`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'যোগাযোগ' : 'Contact'}
@@ -615,7 +616,7 @@ export default function AffiliateLandingPage() {
                   </li>
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/landing/documentation`}
+                      href={`${mainLandingUrl}/landing/documentation`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'ডকুমেন্টেশন' : 'Documentation'}
@@ -632,7 +633,7 @@ export default function AffiliateLandingPage() {
                 <ul role="list" className="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3.5">
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/landing/privacy-policy`}
+                      href={`${mainLandingUrl}/landing/privacy-policy`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'প্রাইভেসি পলিসি' : 'Privacy Policy'}
@@ -640,7 +641,7 @@ export default function AffiliateLandingPage() {
                   </li>
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/landing/terms-of-service`}
+                      href={`${mainLandingUrl}/landing/terms-of-service`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'টার্মস অব সার্ভিস' : 'Terms of Service'}
@@ -648,7 +649,7 @@ export default function AffiliateLandingPage() {
                   </li>
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/landing/cookie-policy`}
+                      href={`${mainLandingUrl}/landing/cookie-policy`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'কুকি পলিসি' : 'Cookie Policy'}
@@ -656,7 +657,7 @@ export default function AffiliateLandingPage() {
                   </li>
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/landing/account-deletion`}
+                      href={`${mainLandingUrl}/landing/account-deletion`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'অ্যাকাউন্ট ডিলিশন' : 'Account Deletion'}
