@@ -68,9 +68,11 @@ export default function AffiliateDashboardLayout({
         }
         prefetchAffiliateDashboardData();
       }
-    } catch {
-      clearAffiliateCache();
-      router.replace('/login');
+    } catch (err: any) {
+      if (err?.response?.status === 401) {
+        clearAffiliateCache();
+        router.replace('/login');
+      }
     } finally {
       setLoading(false);
     }

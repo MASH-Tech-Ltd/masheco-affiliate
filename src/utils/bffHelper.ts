@@ -87,9 +87,37 @@ export const verifyCsrfOrigin = (req: NextRequest): boolean => {
   }
 };
 
+async function refreshServerTokens(
+  req: NextRequest,
+  refreshToken: string
+): Promise<{ accessToken: string; refreshToken: string } | null> {
+  try {
+    const res = await fetchBackendUrl(
+      '/affiliates/refresh-token',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: `_affiliate_r_tkn=${refreshToken}; refreshToken=${refreshToken}`,
+        },
+        body: JSON.stringify({ refreshToken }),
+      },
+      req
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json?.data?.accessToken) {
+      return json.data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Forwards an Affiliate BFF request to the internal backend `/api/v1/affiliates/...`
- * using server-side HttpOnly cookies (`_affiliate_x_tkn`).
+ * using server-side HttpOnly cookies (`_affiliate_x_tkn`) with automatic transparent token refresh.
  */
 export async function forwardToAffiliateBackend(
   req: NextRequest,
@@ -108,7 +136,19 @@ export async function forwardToAffiliateBackend(
   }
 
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get('_affiliate_x_tkn')?.value;
+  let accessToken = cookieStore.get('_affiliate_x_tkn')?.value;
+  const refreshToken =
+    cookieStore.get('_affiliate_r_tkn')?.value || cookieStore.get('refreshToken')?.value;
+
+  let refreshedTokens: { accessToken: string; refreshToken: string } | null = null;
+
+  // If access token is absent but refresh token exists, auto-refresh proactively
+  if (options.requireAuth && !accessToken && refreshToken) {
+    refreshedTokens = await refreshServerTokens(req, refreshToken);
+    if (refreshedTokens?.accessToken) {
+      accessToken = refreshedTokens.accessToken;
+    }
+  }
 
   if (options.requireAuth && !accessToken) {
     return NextResponse.json(
@@ -149,7 +189,7 @@ export async function forwardToAffiliateBackend(
   }
 
   try {
-    const backendRes = await fetchBackendUrl(
+    let backendRes = await fetchBackendUrl(
       endpointPath,
       {
         method,
@@ -159,17 +199,54 @@ export async function forwardToAffiliateBackend(
       req
     );
 
+    // If backend returned 401 (expired access token) and we have a refresh token, auto-refresh and retry once
+    if (backendRes.status === 401 && options.requireAuth && refreshToken && !refreshedTokens) {
+      refreshedTokens = await refreshServerTokens(req, refreshToken);
+      if (refreshedTokens?.accessToken) {
+        accessToken = refreshedTokens.accessToken;
+        headers['Authorization'] = `Bearer ${accessToken}`;
+        headers['Cookie'] = `_affiliate_x_tkn=${accessToken}`;
+        backendRes = await fetchBackendUrl(
+          endpointPath,
+          {
+            method,
+            headers,
+            body: bodyStr,
+          },
+          req
+        );
+      }
+    }
+
     const data = await backendRes.json().catch(() => ({
       success: false,
       message: 'Unexpected response from affiliate service',
     }));
 
-    return NextResponse.json(data, {
+    const response = NextResponse.json(data, {
       status: backendRes.status,
       headers: {
         'Cache-Control': 'private, no-store, no-cache, must-revalidate',
       },
     });
+
+    // If tokens were refreshed, persist new cookies in the browser for 30 days
+    if (refreshedTokens?.accessToken) {
+      const isProd = process.env.NODE_ENV === 'production';
+      const cookieOpts = {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax' as const,
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60, // 30 days persistent session
+      };
+      response.cookies.set('_affiliate_x_tkn', refreshedTokens.accessToken, cookieOpts);
+      if (refreshedTokens.refreshToken) {
+        response.cookies.set('_affiliate_r_tkn', refreshedTokens.refreshToken, cookieOpts);
+      }
+    }
+
+    return response;
   } catch (err: any) {
     console.error('[Affiliate BFF Error]', endpointPath, err?.message || err);
     return NextResponse.json(

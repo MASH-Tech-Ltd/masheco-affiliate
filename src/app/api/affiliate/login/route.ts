@@ -33,21 +33,16 @@ export async function POST(req: NextRequest) {
 
     if (backendRes.ok && data?.data?.accessToken) {
       const isProd = process.env.NODE_ENV === 'production';
-      res.cookies.set('_affiliate_x_tkn', data.data.accessToken, {
+      const cookieOpts = {
         httpOnly: true,
         secure: isProd,
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60,
+        sameSite: 'lax' as const,
+        maxAge: 30 * 24 * 60 * 60, // 30 days persistent session
         path: '/',
-      });
+      };
+      res.cookies.set('_affiliate_x_tkn', data.data.accessToken, cookieOpts);
       if (data.data.refreshToken) {
-        res.cookies.set('_affiliate_r_tkn', data.data.refreshToken, {
-          httpOnly: true,
-          secure: isProd,
-          sameSite: 'lax',
-          maxAge: 7 * 24 * 60 * 60,
-          path: '/',
-        });
+        res.cookies.set('_affiliate_r_tkn', data.data.refreshToken, cookieOpts);
       }
     }
 
@@ -57,7 +52,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: 'Backend server on port 8000 is unreachable. Please ensure electronics-backend is running.',
+        message: 'Backend server is unreachable. Please ensure backend is running.',
       },
       { status: 502 }
     );
