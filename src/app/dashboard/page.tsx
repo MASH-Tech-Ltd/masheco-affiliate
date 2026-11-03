@@ -355,7 +355,15 @@ export default function AffiliateOverviewPage() {
                   referrals.map((r: any) => (
                     <tr key={r._id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-3.5 px-5">
-                        <p className="font-bold text-slate-900">{r.referredStoreName}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-slate-900">{r.referredStoreName}</p>
+                          {r.isMerchantActive ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span>{lang === 'bn' ? 'সক্রিয়' : 'Active'}</span>
+                            </span>
+                          ) : null}
+                        </div>
                         <p className="text-[11px] text-slate-400">{r.referredEmail}</p>
                       </td>
                       <td className="py-3.5 px-4">
@@ -368,11 +376,11 @@ export default function AffiliateOverviewPage() {
                               : 'bg-slate-100 text-slate-600'
                           }`}
                         >
-                          {r.subscriptionStatus}
+                          {r.currentPlanName || r.subscriptionStatus}
                         </span>
                       </td>
                       <td className="py-3.5 px-5 text-right font-extrabold text-emerald-700">
-                        ৳{Number(r.totalCommissionEarned || 0).toLocaleString()}
+                        +৳{Number(r.totalCommissionEarned || 0).toLocaleString()}
                       </td>
                     </tr>
                   ))

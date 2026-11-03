@@ -155,3 +155,4 @@ export function prefetchAffiliateDashboardData() {
       .catch(() => {});
   }
 }
+
