@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+  --font-sans: var(--font-inter);
+  --font-righteous: var(--font-righteous);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --text-primary: 0, 0%, 10%;
+  --text-secondary: 0, 0%, 40%;
+  --accent-primary: 201, 96%, 39%; /* #0284c7 - MASH ECO Sky Blue / Cyan */
+  --accent-hover: 214, 59%, 17%; /* #122846 - MASH ECO Navy Blue */
+  --radius-md: 0.5rem;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-righteous {
+  font-family: var(--font-righteous), sans-serif;
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-xl border border-gray-200/50 shadow-xl rounded-2xl;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-[var(--radius-md)] bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0284c7] transition-all;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-[#122846] via-[#0369a1] to-[#0284c7] hover:brightness-110 text-white font-semibold py-2 px-4 rounded-[var(--radius-md)] transition-all flex items-center justify-center shadow-md shadow-[#0284c7]/20;
+  }
+}
+
+@layer base {
+  input, textarea, select {
+    color: #0f172a;
+  }
+
+  /* Hide native up/down spin buttons on number inputs across Chrome, Safari, Edge, and Firefox */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}
