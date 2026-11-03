@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const cookieStore = await cookies();
-    let refreshToken = cookieStore.get('_affiliate_r_tkn')?.value || cookieStore.get('refreshToken')?.value;
+    let refreshToken = cookieStore.get('_affiliate_r_tkn')?.value;
 
     if (!refreshToken) {
       try {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      Cookie: `_affiliate_r_tkn=${refreshToken}; refreshToken=${refreshToken}`,
+      Cookie: `_affiliate_r_tkn=${refreshToken}`,
     };
 
     const backendRes = await fetchBackendUrl(
@@ -88,3 +88,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

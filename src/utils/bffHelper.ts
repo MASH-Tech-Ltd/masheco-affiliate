@@ -137,8 +137,7 @@ export async function forwardToAffiliateBackend(
 
   const cookieStore = await cookies();
   let accessToken = cookieStore.get('_affiliate_x_tkn')?.value;
-  const refreshToken =
-    cookieStore.get('_affiliate_r_tkn')?.value || cookieStore.get('refreshToken')?.value;
+  const refreshToken = cookieStore.get('_affiliate_r_tkn')?.value;
 
   let refreshedTokens: { accessToken: string; refreshToken: string } | null = null;
 
