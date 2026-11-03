@@ -48,14 +48,8 @@ export default function AffiliateLandingPage() {
   const sixMonthTotal =
     Math.round((perPaymentCommission * duration * calcMerchants + Number.EPSILON) * 100) / 100;
 
-  const rawMerchantUrl =
-    process.env.NEXT_PUBLIC_MERCHANT_URL || 'https://merchant.masheco.com/register';
-  const merchantBaseUrl =
-    rawMerchantUrl.replace(/\/register\/?$/, '').replace(/\/$/, '') ||
-    'https://merchant.masheco.com';
-  const mainLandingUrl = (
-    process.env.NEXT_PUBLIC_MAIN_LANDING_URL || 'https://www.masheco.com'
-  ).replace(/\/$/, '');
+  const merchantPortalBaseUrl = 'https://merchant.masheco.com';
+  const mainLandingUrl = 'https://www.masheco.com';
 
   const affiliateServiceJsonLd = {
     '@context': 'https://schema.org',
@@ -538,15 +532,7 @@ export default function AffiliateLandingPage() {
                       href={mainLandingUrl}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
-                      {lang === 'bn' ? 'মূল ল্যান্ডিং পেজ' : 'Main Landing Page'}
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href={merchantBaseUrl}
-                      className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
-                    >
-                      {lang === 'bn' ? 'মার্চেন্ট পোর্টাল' : 'Merchant Portal'}
+                      {lang === 'bn' ? 'মেইন ওয়েবসাইট' : 'Main Website'}
                     </a>
                   </li>
                   <li>
@@ -584,7 +570,7 @@ export default function AffiliateLandingPage() {
                 <ul role="list" className="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3.5">
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/register`}
+                      href={`${merchantPortalBaseUrl}/register`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'মার্চেন্ট রেজিস্টার' : 'Become a Merchant'}
@@ -592,7 +578,7 @@ export default function AffiliateLandingPage() {
                   </li>
                   <li>
                     <a
-                      href={`${merchantBaseUrl}/login`}
+                      href={`${merchantPortalBaseUrl}/login`}
                       className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors"
                     >
                       {lang === 'bn' ? 'মার্চেন্ট লগইন' : 'Merchant Login'}
