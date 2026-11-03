@@ -88,6 +88,15 @@ export default function AffiliateWithdrawalsPage() {
   const [accountType, setAccountType] = useState(
     () => initialDefaultMethod?.accountType || 'Personal'
   );
+
+  const numericAmount = Number(amount) || 0;
+  const isAmountBelowMinimum = !amount || numericAmount < (summary.minimumWithdrawalAmount || 100);
+  const isAmountExceedsBalance = numericAmount > (summary.availableBalance || 0);
+  const isSubmitDisabled =
+    submitting ||
+    !summary.withdrawalsEnabled ||
+    isAmountBelowMinimum ||
+    isAmountExceedsBalance;
   const [accountNumber, setAccountNumber] = useState(
     () => initialDefaultMethod?.accountNumber || ''
   );
@@ -543,8 +552,32 @@ export default function AffiliateWithdrawalsPage() {
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder={`Min ৳${summary.minimumWithdrawalAmount}`}
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0284c7]"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition focus:outline-none focus:ring-2 ${
+                  amount && (numericAmount < (summary.minimumWithdrawalAmount || 100) || isAmountExceedsBalance)
+                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200 text-rose-900 bg-rose-50/20'
+                    : 'border-slate-200 focus:border-[#0284c7] focus:ring-[#0284c7]'
+                }`}
               />
+              {amount && numericAmount < (summary.minimumWithdrawalAmount || 100) && (
+                <p className="text-[11px] text-rose-500 font-medium mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {lang === 'bn'
+                      ? `ন্যূনতম উত্তোলনের পরিমাণ ৳${summary.minimumWithdrawalAmount || 100}`
+                      : `Minimum withdrawal amount is ৳${summary.minimumWithdrawalAmount || 100}`}
+                  </span>
+                </p>
+              )}
+              {amount && isAmountExceedsBalance && (
+                <p className="text-[11px] text-rose-500 font-medium mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {lang === 'bn'
+                      ? 'আপনার উত্তোলনযোগ্য ব্যালেন্সের চেয়ে বেশি দেওয়া যাবে না'
+                      : 'Amount exceeds available balance'}
+                  </span>
+                </p>
+              )}
             </div>
 
             {/* Interactive Payment Method Pills + Custom Dropdowns */}
@@ -663,8 +696,12 @@ export default function AffiliateWithdrawalsPage() {
 
             <button
               type="submit"
-              disabled={submitting}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#122846] via-[#0369a1] to-[#0284c7] hover:brightness-110 disabled:opacity-60 text-white font-bold text-sm shadow-md shadow-[#0284c7]/20 transition flex items-center justify-center gap-2 cursor-pointer"
+              disabled={isSubmitDisabled}
+              className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 select-none ${
+                isSubmitDisabled
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-[#122846] via-[#0369a1] to-[#0284c7] hover:brightness-110 text-white shadow-md shadow-[#0284c7]/20 cursor-pointer'
+              }`}
             >
               <Send className="w-4 h-4" />
               <span>
