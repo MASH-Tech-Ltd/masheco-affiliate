@@ -451,19 +451,14 @@ export default function AffiliateDashboardLayout({
                   ? 'উত্তোলনযোগ্য ব্যালেন্স (উইথড্র করতে ক্লিক করুন)'
                   : 'Available Balance (Click to withdraw)'
               }
-              className="flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-200/90 shadow-2xs transition-all group cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-200/90 shadow-2xs transition-all group cursor-pointer shrink-0"
             >
               <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform shrink-0">
                 <Wallet className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </div>
-              <div className="flex flex-col leading-tight">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700/80 hidden sm:inline">
-                  {lang === 'bn' ? 'ব্যালেন্স' : 'Available'}
-                </span>
-                <span className="text-[11px] sm:text-sm font-extrabold text-emerald-950 tracking-tight whitespace-nowrap">
-                  ৳{availableBalance.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
+              <span className="text-xs sm:text-sm font-extrabold text-emerald-950 tracking-tight whitespace-nowrap">
+                ৳{availableBalance.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
               {pendingBalance > 0 && (
                 <span
                   title={lang === 'bn' ? 'পেন্ডিং কমিশন' : 'Pending Commission'}
