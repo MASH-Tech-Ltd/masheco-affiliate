@@ -17,23 +17,33 @@ import { useAffiliateLang } from '@/context/LanguageContext';
 import { useSocket } from '@/context/SocketContext';
 import CustomSelect from '@/components/CustomSelect';
 import { affiliateApi } from '@/utils/affiliateApi';
+import { affiliateCache } from '@/utils/affiliateCache';
 
 export default function AffiliateCommissionsPage() {
   const { lang, t } = useAffiliateLang();
   const { socket } = useSocket();
-  const [commissions, setCommissions] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>({});
-  const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
+  const [commissions, setCommissions] = useState<any[]>(
+    () => affiliateCache.commissions?.commissions || []
+  );
+  const [summary, setSummary] = useState<any>(() => affiliateCache.commissions?.summary || {});
+  const [meta, setMeta] = useState(
+    () => affiliateCache.commissions?.meta || { page: 1, limit: 10, total: 0, totalPages: 1 }
+  );
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !affiliateCache.commissions);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchCommissions = useCallback(
-    async (page = 1) => {
+    async (page = 1, isManual = false) => {
       try {
-        setLoading(true);
+        if (!affiliateCache.commissions) {
+          setLoading(true);
+        } else if (isManual) {
+          setIsRefreshing(true);
+        }
         const res = await affiliateApi.get('/commissions', {
           params: {
             page,
@@ -44,14 +54,27 @@ export default function AffiliateCommissionsPage() {
           },
         });
         if (res.data?.data) {
-          setCommissions(res.data.data.data || []);
-          setSummary(res.data.data.summary || {});
-          setMeta(res.data.data.meta || { page: 1, limit: 10, total: 0, totalPages: 1 });
+          const nextCommissions = res.data.data.data || [];
+          const nextSummary = res.data.data.summary || {};
+          const nextMeta = res.data.data.meta || { page: 1, limit: 10, total: 0, totalPages: 1 };
+          setCommissions(nextCommissions);
+          setSummary(nextSummary);
+          setMeta(nextMeta);
+          if (page === 1 && !search && status === 'all' && sortBy === 'newest') {
+            affiliateCache.commissions = {
+              commissions: nextCommissions,
+              summary: nextSummary,
+              meta: nextMeta,
+            };
+          }
         }
       } catch {
-        toast.error('Failed to load commission history');
+        if (!affiliateCache.commissions) {
+          toast.error('Failed to load commission history');
+        }
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     },
     [search, status, sortBy]
@@ -152,10 +175,10 @@ export default function AffiliateCommissionsPage() {
 
             <button
               type="button"
-              onClick={() => fetchCommissions(meta.page)}
+              onClick={() => fetchCommissions(meta.page, true)}
               className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading || isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>

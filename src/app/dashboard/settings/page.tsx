@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { affiliateApi } from '@/utils/affiliateApi';
+import { affiliateCache } from '@/utils/affiliateCache';
 import { useLanguage } from '@/context/LanguageContext';
 import CustomSelect from '@/components/CustomSelect';
 import toast from 'react-hot-toast';
@@ -42,19 +43,26 @@ export default function AffiliateSettingsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'payment'>('profile');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !affiliateCache.me);
   const [saving, setSaving] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Profile fields
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [affiliateCode, setAffiliateCode] = useState('');
-  const [referralLink, setReferralLink] = useState('');
+  const [name, setName] = useState(() => affiliateCache.me?.user?.name || '');
+  const [email, setEmail] = useState(() => affiliateCache.me?.user?.email || '');
+  const [phone, setPhone] = useState(() => affiliateCache.me?.user?.phone || '');
+  const [address, setAddress] = useState(() => affiliateCache.me?.user?.address || '');
+  const [avatarUrl, setAvatarUrl] = useState(
+    () =>
+      affiliateCache.me?.user?.avatar?.secure_url || affiliateCache.me?.user?.avatarUrl || ''
+  );
+  const [affiliateCode, setAffiliateCode] = useState(
+    () => affiliateCache.me?.affiliate?.affiliateCode || ''
+  );
+  const [referralLink, setReferralLink] = useState(
+    () => affiliateCache.me?.affiliate?.referralLink || ''
+  );
 
   // Password fields
   const [oldPassword, setOldPassword] = useState('');
@@ -65,14 +73,25 @@ export default function AffiliateSettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Saved Payment Methods
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodItem[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodItem[]>(
+    () => affiliateCache.me?.affiliate?.paymentMethods || []
+  );
 
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        setLoading(true);
+        if (!affiliateCache.me) {
+          setLoading(true);
+        }
         const res = await affiliateApi.get('/me');
         const payload = res.data?.data;
+        if (payload) {
+          affiliateCache.me = {
+            user: payload.user,
+            affiliate: payload.affiliate,
+            programConfig: payload.programConfig,
+          };
+        }
         if (payload?.user) {
           setName(payload.user.name || '');
           setEmail(payload.user.email || '');
@@ -86,7 +105,9 @@ export default function AffiliateSettingsPage() {
           setPaymentMethods(payload.affiliate.paymentMethods || []);
         }
       } catch (err: any) {
-        toast.error(err.response?.data?.message || 'Failed to load account settings');
+        if (!affiliateCache.me) {
+          toast.error(err.response?.data?.message || 'Failed to load account settings');
+        }
       } finally {
         setLoading(false);
       }

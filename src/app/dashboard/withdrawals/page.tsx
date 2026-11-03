@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { affiliateApi } from '@/utils/affiliateApi';
+import { affiliateCache } from '@/utils/affiliateCache';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSocket } from '@/context/SocketContext';
 import CustomSelect from '@/components/CustomSelect';
@@ -37,22 +38,43 @@ export default function AffiliateWithdrawalsPage() {
   const { t, lang } = useLanguage();
   const { socket } = useSocket();
 
-  const [loading, setLoading] = useState(true);
+  const initialDefaultMethod = (() => {
+    const methods: SavedPaymentMethod[] =
+      affiliateCache.withdrawals?.savedMethods ||
+      affiliateCache.me?.affiliate?.paymentMethods ||
+      [];
+    return methods.find((m) => m.isDefault) || methods[0] || null;
+  })();
+
+  const [loading, setLoading] = useState(() => !affiliateCache.withdrawals);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [summary, setSummary] = useState({
-    availableBalance: 0,
-    pendingWithdrawalAmount: 0,
-    totalWithdrawn: 0,
-    minimumWithdrawalAmount: 100,
-    maximumWithdrawalAmount: 50000,
-    withdrawalsEnabled: true,
-    supportedMethods: ['bKash', 'Nagad', 'Rocket', 'Bank'] as string[],
-  });
+  const [summary, setSummary] = useState(
+    () =>
+      affiliateCache.withdrawals?.summary || {
+        availableBalance: Number(affiliateCache.me?.affiliate?.availableBalance || 0),
+        pendingWithdrawalAmount: 0,
+        totalWithdrawn: 0,
+        minimumWithdrawalAmount: 100,
+        maximumWithdrawalAmount: 50000,
+        withdrawalsEnabled: true,
+        supportedMethods: ['bKash', 'Nagad', 'Rocket', 'Bank'] as string[],
+      }
+  );
 
-  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
-  const [withdrawals, setWithdrawals] = useState<any[]>([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>(
+    () =>
+      affiliateCache.withdrawals?.savedMethods ||
+      affiliateCache.me?.affiliate?.paymentMethods ||
+      []
+  );
+  const [withdrawals, setWithdrawals] = useState<any[]>(
+    () => affiliateCache.withdrawals?.withdrawals || []
+  );
+  const [meta, setMeta] = useState(
+    () => affiliateCache.withdrawals?.meta || { page: 1, limit: 10, total: 0, totalPages: 1 }
+  );
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
@@ -60,18 +82,30 @@ export default function AffiliateWithdrawalsPage() {
 
   // Form state
   const [amount, setAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'bKash' | 'Nagad' | 'Rocket' | 'Bank'>('bKash');
-  const [accountType, setAccountType] = useState('Personal');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [accountName, setAccountName] = useState('');
-  const [bankName, setBankName] = useState('');
-  const [branchName, setBranchName] = useState('');
-  const [routingNumber, setRoutingNumber] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'bKash' | 'Nagad' | 'Rocket' | 'Bank'>(
+    () => initialDefaultMethod?.method || 'bKash'
+  );
+  const [accountType, setAccountType] = useState(
+    () => initialDefaultMethod?.accountType || 'Personal'
+  );
+  const [accountNumber, setAccountNumber] = useState(
+    () => initialDefaultMethod?.accountNumber || ''
+  );
+  const [accountName, setAccountName] = useState(() => initialDefaultMethod?.accountName || '');
+  const [bankName, setBankName] = useState(() => initialDefaultMethod?.bankName || '');
+  const [branchName, setBranchName] = useState(() => initialDefaultMethod?.branchName || '');
+  const [routingNumber, setRoutingNumber] = useState(
+    () => initialDefaultMethod?.routingNumber || ''
+  );
 
   const fetchWithdrawalsData = useCallback(
-    async (page = meta.page) => {
+    async (page = meta.page, isManual = false) => {
       try {
-        setLoading(true);
+        if (!affiliateCache.withdrawals) {
+          setLoading(true);
+        } else if (isManual) {
+          setIsRefreshing(true);
+        }
         const [wdRes, pmRes] = await Promise.all([
           affiliateApi.get('/withdrawals', {
             params: {
@@ -85,13 +119,25 @@ export default function AffiliateWithdrawalsPage() {
         ]);
 
         const wdPayload = wdRes.data?.data;
+        const methods: SavedPaymentMethod[] = pmRes.data?.data || [];
         if (wdPayload) {
-          setWithdrawals(wdPayload.data || []);
+          const nextWithdrawals = wdPayload.data || [];
+          const nextSummary = wdPayload.summary || summary;
+          const nextMeta = wdPayload.meta || meta;
+          setWithdrawals(nextWithdrawals);
           if (wdPayload.summary) setSummary(wdPayload.summary);
           if (wdPayload.meta) setMeta(wdPayload.meta);
+
+          if (page === 1 && statusFilter === 'all' && methodFilter === 'all') {
+            affiliateCache.withdrawals = {
+              withdrawals: nextWithdrawals,
+              summary: nextSummary,
+              savedMethods: methods,
+              meta: nextMeta,
+            };
+          }
         }
 
-        const methods: SavedPaymentMethod[] = pmRes.data?.data || [];
         setSavedMethods(methods);
 
         const defaultMethod = methods.find((m) => m.isDefault) || methods[0];
@@ -105,9 +151,12 @@ export default function AffiliateWithdrawalsPage() {
           setRoutingNumber(defaultMethod.routingNumber || '');
         }
       } catch (err: any) {
-        toast.error(err.response?.data?.message || 'Failed to load withdrawal history');
+        if (!affiliateCache.withdrawals) {
+          toast.error(err.response?.data?.message || 'Failed to load withdrawal history');
+        }
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     },
     [meta.page, statusFilter, methodFilter, accountNumber]
@@ -271,7 +320,7 @@ export default function AffiliateWithdrawalsPage() {
   };
 
   const methodOptions = (summary.supportedMethods || ['bKash', 'Nagad', 'Rocket', 'Bank']).map(
-    (m) => ({
+    (m: string) => ({
       value: m,
       label: m,
       subLabel:
@@ -654,10 +703,10 @@ export default function AffiliateWithdrawalsPage() {
               />
               <button
                 type="button"
-                onClick={() => fetchWithdrawalsData(meta.page)}
+                onClick={() => fetchWithdrawalsData(meta.page, true)}
                 className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition cursor-pointer"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${loading || isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>

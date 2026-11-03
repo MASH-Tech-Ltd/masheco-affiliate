@@ -26,6 +26,11 @@ import toast from 'react-hot-toast';
 import { useAffiliateLang } from '@/context/LanguageContext';
 import { useSocket } from '@/context/SocketContext';
 import { affiliateApi } from '@/utils/affiliateApi';
+import {
+  affiliateCache,
+  clearAffiliateCache,
+  prefetchAffiliateDashboardData,
+} from '@/utils/affiliateCache';
 
 export default function AffiliateDashboardLayout({
   children,
@@ -37,25 +42,34 @@ export default function AffiliateDashboardLayout({
   const { lang, setLang, t } = useAffiliateLang();
   const { socket } = useSocket();
 
-  const [user, setUser] = useState<any>(null);
-  const [affiliate, setAffiliate] = useState<any>(null);
-  const [programConfig, setProgramConfig] = useState<any>(null);
+  const [user, setUser] = useState<any>(() => affiliateCache.me?.user || null);
+  const [affiliate, setAffiliate] = useState<any>(() => affiliateCache.me?.affiliate || null);
+  const [programConfig, setProgramConfig] = useState<any>(
+    () => affiliateCache.me?.programConfig || null
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !affiliateCache.me);
   const [copiedSidebarCode, setCopiedSidebarCode] = useState(false);
 
   const fetchMe = useCallback(async () => {
     try {
       const res = await affiliateApi.get('/me');
       if (res.data?.data) {
+        affiliateCache.me = {
+          user: res.data.data.user,
+          affiliate: res.data.data.affiliate,
+          programConfig: res.data.data.programConfig,
+        };
         setUser(res.data.data.user);
         setAffiliate(res.data.data.affiliate);
         setProgramConfig(res.data.data.programConfig);
         if (typeof window !== 'undefined' && res.data.data.user) {
           localStorage.setItem('affiliate_user', JSON.stringify(res.data.data.user));
         }
+        prefetchAffiliateDashboardData();
       }
     } catch {
+      clearAffiliateCache();
       router.replace('/login');
     } finally {
       setLoading(false);
@@ -118,6 +132,7 @@ export default function AffiliateDashboardLayout({
     } catch {
       // ignore
     }
+    clearAffiliateCache();
     if (typeof window !== 'undefined') {
       localStorage.removeItem('affiliate_user');
       sessionStorage.removeItem('affiliate_user');

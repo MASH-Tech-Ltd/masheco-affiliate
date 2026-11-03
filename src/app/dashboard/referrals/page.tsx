@@ -20,26 +20,36 @@ import { useAffiliateLang } from '@/context/LanguageContext';
 import { useSocket } from '@/context/SocketContext';
 import CustomSelect from '@/components/CustomSelect';
 import { affiliateApi } from '@/utils/affiliateApi';
+import { affiliateCache } from '@/utils/affiliateCache';
 
 export default function AffiliateReferralsPage() {
   const { lang, t } = useAffiliateLang();
   const { socket } = useSocket();
-  const [referrals, setReferrals] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>({});
-  const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
-  const [profile, setProfile] = useState<any>(null);
+  const [referrals, setReferrals] = useState<any[]>(() => affiliateCache.referrals?.referrals || []);
+  const [stats, setStats] = useState<any>(() => affiliateCache.referrals?.stats || {});
+  const [meta, setMeta] = useState(
+    () => affiliateCache.referrals?.meta || { page: 1, limit: 10, total: 0, totalPages: 1 }
+  );
+  const [profile, setProfile] = useState<any>(
+    () => affiliateCache.referrals?.profile || affiliateCache.me?.affiliate || null
+  );
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [eligibilityStatus, setEligibilityStatus] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !affiliateCache.referrals);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [copied, setCopied] = useState<'link' | 'code' | null>(null);
 
   const fetchReferrals = useCallback(
-    async (page = 1) => {
+    async (page = 1, isManual = false) => {
       try {
-        setLoading(true);
+        if (!affiliateCache.referrals) {
+          setLoading(true);
+        } else if (isManual) {
+          setIsRefreshing(true);
+        }
         const res = await affiliateApi.get('/referrals', {
           params: {
             page,
@@ -51,24 +61,52 @@ export default function AffiliateReferralsPage() {
           },
         });
         if (res.data?.data) {
-          setReferrals(res.data.data.data || []);
-          setStats(res.data.data.stats || {});
-          setMeta(res.data.data.meta || { page: 1, limit: 10, total: 0, totalPages: 1 });
+          const nextReferrals = res.data.data.data || [];
+          const nextStats = res.data.data.stats || {};
+          const nextMeta = res.data.data.meta || { page: 1, limit: 10, total: 0, totalPages: 1 };
+          setReferrals(nextReferrals);
+          setStats(nextStats);
+          setMeta(nextMeta);
+          if (
+            page === 1 &&
+            !search &&
+            status === 'all' &&
+            eligibilityStatus === 'all' &&
+            sortBy === 'newest'
+          ) {
+            affiliateCache.referrals = {
+              referrals: nextReferrals,
+              stats: nextStats,
+              meta: nextMeta,
+              profile: affiliateCache.referrals?.profile || affiliateCache.me?.affiliate || null,
+            };
+          }
         }
       } catch {
-        toast.error('Failed to load referred merchants');
+        if (!affiliateCache.referrals) {
+          toast.error('Failed to load referred merchants');
+        }
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     },
     [search, status, eligibilityStatus, sortBy]
   );
 
   useEffect(() => {
+    if (affiliateCache.me?.affiliate) {
+      setProfile(affiliateCache.me.affiliate);
+    }
     affiliateApi
       .get('/me')
       .then((res) => {
-        if (res.data?.data?.affiliate) setProfile(res.data.data.affiliate);
+        if (res.data?.data?.affiliate) {
+          setProfile(res.data.data.affiliate);
+          if (affiliateCache.referrals) {
+            affiliateCache.referrals.profile = res.data.data.affiliate;
+          }
+        }
       })
       .catch(() => {});
   }, []);
@@ -243,10 +281,10 @@ export default function AffiliateReferralsPage() {
 
             <button
               type="button"
-              onClick={() => fetchReferrals(meta.page)}
+              onClick={() => fetchReferrals(meta.page, true)}
               className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading || isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>

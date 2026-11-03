@@ -25,29 +25,41 @@ import toast from 'react-hot-toast';
 import { useAffiliateLang } from '@/context/LanguageContext';
 import { useSocket } from '@/context/SocketContext';
 import { affiliateApi } from '@/utils/affiliateApi';
+import { affiliateCache } from '@/utils/affiliateCache';
 
 export default function AffiliateOverviewPage() {
   const { lang, t } = useAffiliateLang();
   const { socket } = useSocket();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<any>(() => affiliateCache.overview || null);
   const [refPage, setRefPage] = useState(1);
   const [txPage, setTxPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !affiliateCache.overview);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [copied, setCopied] = useState<'link' | 'code' | null>(null);
 
-  const fetchOverview = useCallback(async (rPage = 1, tPage = 1) => {
+  const fetchOverview = useCallback(async (rPage = 1, tPage = 1, isManual = false) => {
     try {
-      setLoading(true);
+      if (!affiliateCache.overview) {
+        setLoading(true);
+      } else if (isManual) {
+        setIsRefreshing(true);
+      }
       const res = await affiliateApi.get('/overview', {
         params: { refPage: rPage, refLimit: 5, txPage: tPage, txLimit: 5 },
       });
       if (res.data?.data) {
+        if (rPage === 1 && tPage === 1) {
+          affiliateCache.overview = res.data.data;
+        }
         setData(res.data.data);
       }
     } catch {
-      toast.error('Failed to load overview metrics');
+      if (!affiliateCache.overview) {
+        toast.error('Failed to load overview metrics');
+      }
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -238,11 +250,11 @@ export default function AffiliateOverviewPage() {
 
               <button
                 type="button"
-                onClick={() => fetchOverview(refPage, txPage)}
+                onClick={() => fetchOverview(refPage, txPage, true)}
                 title={lang === 'bn' ? 'রিফ্রেশ করুন' : 'Refresh Data'}
                 className="p-3 sm:p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition cursor-pointer shrink-0"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${loading || isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>

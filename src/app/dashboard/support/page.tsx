@@ -21,14 +21,18 @@ import { useAffiliateLang } from '@/context/LanguageContext';
 import { useSocket } from '@/context/SocketContext';
 import CustomSelect from '@/components/CustomSelect';
 import { affiliateApi } from '@/utils/affiliateApi';
+import { affiliateCache } from '@/utils/affiliateCache';
 
 export default function AffiliateSupportPage() {
   const { lang } = useAffiliateLang();
   const { socket } = useSocket();
 
-  const [tickets, setTickets] = useState<any[]>([]);
-  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [tickets, setTickets] = useState<any[]>(() => affiliateCache.support?.tickets || []);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(
+    () => affiliateCache.support?.selectedTicket || affiliateCache.support?.tickets?.[0] || null
+  );
+  const [loading, setLoading] = useState(() => !affiliateCache.support);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -48,21 +52,33 @@ export default function AffiliateSupportPage() {
   const [sendingReply, setSendingReply] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchTickets = useCallback(async () => {
+  const fetchTickets = useCallback(async (isManual = false) => {
     try {
-      setLoading(true);
+      if (!affiliateCache.support) {
+        setLoading(true);
+      } else if (isManual) {
+        setIsRefreshing(true);
+      }
       const res = await affiliateApi.get('/support');
       const list = res.data?.data || [];
       setTickets(list);
       setSelectedTicket((prev: any) => {
-        if (!prev) return list[0] || null;
-        const updated = list.find((item: any) => item._id === prev._id);
-        return updated || prev;
+        const nextSelected = !prev
+          ? list[0] || null
+          : list.find((item: any) => item._id === prev._id) || prev;
+        affiliateCache.support = {
+          tickets: list,
+          selectedTicket: nextSelected,
+        };
+        return nextSelected;
       });
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to load support tickets');
+      if (!affiliateCache.support) {
+        toast.error(err.response?.data?.message || 'Failed to load support tickets');
+      }
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -359,10 +375,10 @@ export default function AffiliateSupportPage() {
               </h3>
               <button
                 type="button"
-                onClick={fetchTickets}
+                onClick={() => fetchTickets(true)}
                 className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${loading || isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
 
