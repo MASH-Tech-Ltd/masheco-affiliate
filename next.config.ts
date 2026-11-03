@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const cleanEnv = (val?: string) => (val ? val.split('#')[0].trim() : '');
 
@@ -14,9 +13,6 @@ const backendUrl = rawBackendUrl
   .replace(/\/$/, '');
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.resolve(__dirname, '..'),
-  },
   images: {
     remotePatterns: [
       {

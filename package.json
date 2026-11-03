@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3003 --webpack",
-    "build": "next build --webpack",
+    "dev": "next dev -p 3003",
+    "build": "next build",
     "start": "next start -p 3003",
     "lint": "eslint"
   },
@@ -30,6 +30,11 @@
     "postcss": "^8.5.26",
     "tailwindcss": "^4.0.0",
     "typescript": "^5"
+  },
+  "overrides": {
+    "glob": "^10.4.5",
+    "minimatch": "^11.0.3",
+    "follow-redirects": "^1.16.2",
+    "source-map-js": "^1.2.2"
   }
 }
-
