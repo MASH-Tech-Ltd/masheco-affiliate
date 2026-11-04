@@ -10,6 +10,7 @@ export const affiliateTranslations = {
       withdrawals: 'Withdrawals',
       support: 'Support',
       settings: 'Settings',
+      notifications: 'Notifications',
       logout: 'Sign Out',
       login: 'Affiliate Login',
       register: 'Affiliate Register',
@@ -147,6 +148,15 @@ export const affiliateTranslations = {
       title: 'Partner Support Center',
       subtitle: 'Open a support ticket and chat directly with the MASH ECO support team.',
     },
+    notifications: {
+      title: 'Partner Notifications',
+      subtitle: 'Real-time alerts for referrals, commissions, and payouts.',
+      allTab: 'All',
+      unreadTab: 'Unread',
+      markAllRead: 'Mark All as Read',
+      noNotifications: 'No notifications yet',
+      noNotificationsSub: 'You will see alerts here when new merchants register, commissions arrive, or payout updates occur.',
+    },
   },
   bn: {
     brandSub: 'অ্যাফিলিয়েট পার্টনার',
@@ -157,6 +167,7 @@ export const affiliateTranslations = {
       withdrawals: 'উইথড্রয়াল',
       support: 'সাপোর্ট',
       settings: 'সেটিংস',
+      notifications: 'বিজ্ঞপ্তি',
       logout: 'লগআউট',
       login: 'অ্যাফিলিয়েট লগইন',
       register: 'অ্যাফিলিয়েট রেজিস্টার',
@@ -293,6 +304,15 @@ export const affiliateTranslations = {
     support: {
       title: 'পার্টনার সাপোর্ট সেন্টার',
       subtitle: 'যেকোনো সমস্যা বা প্রশ্নে সাপোর্ট টিকেট খুলুন এবং সরাসরি কথা বলুন।',
+    },
+    notifications: {
+      title: 'পার্টনার নোটিফিকেশন',
+      subtitle: 'রেফারেল, কমিশন এবং উইথড্রয়াল সংক্রান্ত সকল আপডেট ও অ্যালার্ট।',
+      allTab: 'সব',
+      unreadTab: 'অপঠিত',
+      markAllRead: 'সবগুলো পড়া হয়েছে মার্ক করুন',
+      noNotifications: 'এখনও কোনো নোটিফিকেশন নেই',
+      noNotificationsSub: 'নতুন মার্চেন্ট সাইন আপ করলে, কমিশন যোগ হলে বা উইথড্রয়াল আপডেট হলে এখানে দেখতে পাবেন।',
     },
   },
 };

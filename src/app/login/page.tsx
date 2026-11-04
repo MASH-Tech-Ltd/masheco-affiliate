@@ -105,6 +105,41 @@ export default function AffiliateLoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-white">
+      {/* Mobile Top Header: Logo on left, Language switcher on right (Pinned at the very top for mobile) */}
+      <header className="lg:hidden w-full flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-gray-100 bg-white shrink-0">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <img
+            src="/masheco-logo.png"
+            alt="MASH ECO"
+            className="w-8 h-8 object-contain"
+          />
+          <span className="text-xl sm:text-2xl font-righteous text-gray-900 tracking-tight">
+            MASH ECO
+          </span>
+        </Link>
+
+        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+          <button
+            type="button"
+            onClick={() => setLang('en')}
+            className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+              lang === 'en' ? 'bg-[#0284c7] text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            onClick={() => setLang('bn')}
+            className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+              lang === 'bn' ? 'bg-[#0284c7] text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            বাংলা
+          </button>
+        </div>
+      </header>
+
       {/* Left Panel - Premium Brand Hero (Identical to Merchant Login) */}
       <div className="relative hidden lg:flex flex-1 flex-col justify-center items-end p-16 xl:p-24 overflow-hidden bg-gray-900">
         <div className="absolute inset-0">
@@ -162,18 +197,8 @@ export default function AffiliateLoginPage() {
 
       {/* Right Panel - Login Form */}
       <div className="flex-1 flex flex-col justify-center items-center lg:items-start p-6 sm:p-12 lg:p-16 xl:p-24 relative">
-        <div className="w-full flex items-center justify-between lg:justify-end mb-8 lg:mb-0 lg:absolute lg:top-8 lg:right-12 lg:w-auto">
-          <Link href="/" className="lg:hidden flex items-center gap-2">
-            <img
-              src="/masheco-logo.png"
-              alt="MASH ECO"
-              className="w-9 h-9 sm:w-12 sm:h-12 object-contain"
-            />
-            <span className="text-2xl sm:text-3xl font-righteous text-gray-900 tracking-tight">
-              MASH ECO
-            </span>
-          </Link>
-
+        {/* Desktop Language Switcher (top right) */}
+        <div className="hidden lg:flex items-center justify-end absolute top-8 right-12">
           <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
             <button
               type="button"

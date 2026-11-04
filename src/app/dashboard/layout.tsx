@@ -21,6 +21,7 @@ import {
   Clock,
   LifeBuoy,
   Globe,
+  Bell,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAffiliateLang } from '@/context/LanguageContext';
@@ -50,6 +51,51 @@ export default function AffiliateDashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(() => !affiliateCache.me);
   const [copiedSidebarCode, setCopiedSidebarCode] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await affiliateApi.get('/notifications', { params: { limit: 20 } });
+      const raw = res.data?.data;
+      const list = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.notifications)
+          ? raw.notifications
+          : [];
+      const unread = list.filter((n: any) => !n.read).length;
+      setUnreadNotifCount(unread);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleNewNotif = () => {
+      setUnreadNotifCount((prev) => prev + 1);
+    };
+    socket.on('new_notification', handleNewNotif);
+
+    const handleRead = () => {
+      setUnreadNotifCount((prev) => Math.max(0, prev - 1));
+    };
+    const handleAllRead = () => {
+      setUnreadNotifCount(0);
+    };
+
+    window.addEventListener('affiliate:notificationRead', handleRead);
+    window.addEventListener('affiliate:notificationsAllRead', handleAllRead);
+
+    return () => {
+      socket.off('new_notification', handleNewNotif);
+      window.removeEventListener('affiliate:notificationRead', handleRead);
+      window.removeEventListener('affiliate:notificationsAllRead', handleAllRead);
+    };
+  }, [socket]);
 
   const fetchMe = useCallback(async () => {
     try {
@@ -175,6 +221,12 @@ export default function AffiliateDashboardLayout({
     {
       title: lang === 'bn' ? 'সাপোর্ট ও অ্যাকাউন্ট' : 'SUPPORT & ACCOUNT',
       items: [
+        {
+          href: '/dashboard/notifications',
+          label: t.nav.notifications || (lang === 'bn' ? 'বিজ্ঞপ্তি' : 'Notifications'),
+          icon: Bell,
+          badge: unreadNotifCount,
+        },
         { href: '/dashboard/support', label: t.nav.support, icon: LifeBuoy },
         { href: '/dashboard/settings', label: t.nav.settings, icon: Settings },
       ],
@@ -182,6 +234,16 @@ export default function AffiliateDashboardLayout({
   ];
 
   const getHeaderMeta = () => {
+    if (pathname.startsWith('/dashboard/notifications')) {
+      return {
+        title: t.notifications?.title || (lang === 'bn' ? 'পার্টনার নোটিফিকেশন' : 'Partner Notifications'),
+        subtitle:
+          t.notifications?.subtitle ||
+          (lang === 'bn'
+            ? 'রেফারেল, কমিশন এবং উইথড্রয়াল সংক্রান্ত সকল আপডেট'
+            : 'Real-time alerts for referrals, commissions, and payouts'),
+      };
+    }
     if (pathname.startsWith('/dashboard/referrals')) {
       return { title: t.referrals.title, subtitle: t.referrals.subtitle };
     }
@@ -306,6 +368,11 @@ export default function AffiliateDashboardLayout({
                           }`}
                         >
                           ৳{availableBalance.toLocaleString()}
+                        </span>
+                      )}
+                      {(item as any).badge !== undefined && Number((item as any).badge) > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white animate-pulse">
+                          {(item as any).badge}
                         </span>
                       )}
                     </Link>
@@ -473,6 +540,20 @@ export default function AffiliateDashboardLayout({
                 >
                   <Clock className="w-2.5 h-2.5" />
                   +৳{pendingBalance.toLocaleString('en-BD')}
+                </span>
+              )}
+            </Link>
+
+            {/* Notification Bell Icon */}
+            <Link
+              href="/dashboard/notifications"
+              title={lang === 'bn' ? 'বিজ্ঞপ্তি' : 'Notifications'}
+              className="relative p-2 rounded-xl border border-slate-200/90 hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
+            >
+              <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+                  {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
                 </span>
               )}
             </Link>

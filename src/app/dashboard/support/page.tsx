@@ -50,7 +50,10 @@ export default function AffiliateSupportPage() {
   // Reply State
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchTickets = useCallback(async (isManual = false) => {
     try {
@@ -136,13 +139,33 @@ export default function AffiliateSupportPage() {
       fetchTickets();
     };
 
+    const handleTypingStart = (data: any) => {
+      if (data?.ticketId === selectedTicket.ticketId) {
+        setIsOtherTyping(true);
+        setTypingUser(data.senderName || 'MASH ECO Support');
+      }
+    };
+
+    const handleTypingEnd = (data: any) => {
+      if (data?.ticketId === selectedTicket.ticketId) {
+        setIsOtherTyping(false);
+        setTypingUser('');
+      }
+    };
+
     socket.on('new_message', handleNewMessage);
     socket.on('status_changed', handleStatusChanged);
+    socket.on('typing_start', handleTypingStart);
+    socket.on('typing_end', handleTypingEnd);
 
     return () => {
       socket.emit('leave_ticket', selectedTicket.ticketId);
       socket.off('new_message', handleNewMessage);
       socket.off('status_changed', handleStatusChanged);
+      socket.off('typing_start', handleTypingStart);
+      socket.off('typing_end', handleTypingEnd);
+      setIsOtherTyping(false);
+      setTypingUser('');
     };
   }, [socket, selectedTicket?.ticketId, fetchTickets]);
 
@@ -190,7 +213,12 @@ export default function AffiliateSupportPage() {
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTicket?._id || !replyText.trim()) return;
+    if (!selectedTicket?._id || !replyText.trim() || sendingReply) return;
+
+    if (socket && selectedTicket?.ticketId) {
+      socket.emit('typing_end', { ticketId: selectedTicket.ticketId });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    }
 
     try {
       setSendingReply(true);
@@ -206,6 +234,31 @@ export default function AffiliateSupportPage() {
       toast.error(err.response?.data?.message || 'Failed to send reply');
     } finally {
       setSendingReply(false);
+    }
+  };
+
+  const handleReplyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setReplyText(e.target.value);
+    if (socket && selectedTicket?.ticketId) {
+      socket.emit('typing_start', {
+        ticketId: selectedTicket.ticketId,
+        senderName: 'Affiliate Partner',
+      });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('typing_end', { ticketId: selectedTicket.ticketId });
+      }, 2000);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (socket && selectedTicket?.ticketId) {
+        socket.emit('typing_end', { ticketId: selectedTicket.ticketId });
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      }
+      handleSendReply(e);
     }
   };
 
@@ -548,13 +601,13 @@ export default function AffiliateSupportPage() {
                           className={`max-w-[82%] rounded-2xl p-4 shadow-2xs ${
                             isAdmin
                               ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs'
-                              : 'bg-gradient-to-r from-[#122846] to-[#0284c7] text-white rounded-tr-xs'
+                              : 'bg-[#0284c7] text-white rounded-tr-xs shadow-xs'
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1.5">
                             <span
                               className={`inline-flex items-center gap-1 text-[11px] font-bold ${
-                                isAdmin ? 'text-[#0284c7]' : 'text-sky-200'
+                                isAdmin ? 'text-[#0284c7]' : 'text-sky-100'
                               }`}
                             >
                               {isAdmin ? (
@@ -571,7 +624,7 @@ export default function AffiliateSupportPage() {
                             </span>
                             <span
                               className={`text-[10px] ${
-                                isAdmin ? 'text-slate-400' : 'text-slate-300'
+                                isAdmin ? 'text-slate-400' : 'text-sky-100/80'
                               }`}
                             >
                               {msg.createdAt
@@ -592,6 +645,19 @@ export default function AffiliateSupportPage() {
                     );
                   })
                 )}
+                {isOtherTyping && (
+                  <div className="flex items-center gap-2 text-xs text-slate-500 italic px-3 py-1.5 bg-white rounded-xl w-fit border border-slate-200 shadow-2xs animate-pulse">
+                    <div className="flex gap-1 items-center">
+                      <span className="w-1.5 h-1.5 bg-[#0284c7] rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1.5 h-1.5 bg-[#0284c7] rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1.5 h-1.5 bg-[#0284c7] rounded-full animate-bounce" />
+                    </div>
+                    <span className="font-medium text-slate-600">
+                      {typingUser || 'MASH ECO Support'}{' '}
+                      {lang === 'bn' ? 'টাইপ করছেন...' : 'is typing...'}
+                    </span>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
@@ -603,11 +669,12 @@ export default function AffiliateSupportPage() {
                 <textarea
                   rows={2}
                   value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
+                  onChange={handleReplyChange}
+                  onKeyDown={handleKeyDown}
                   placeholder={
                     lang === 'bn'
-                      ? 'আপনার উত্তর লিখুন...'
-                      : 'Write a reply to MASH ECO Support...'
+                      ? 'আপনার উত্তর লিখুন... (পাঠাতে Enter চাপুন)'
+                      : 'Write a reply to MASH ECO Support... (Press Enter to send)'
                   }
                   className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0284c7] resize-none"
                 />
