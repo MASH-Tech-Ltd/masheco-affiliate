@@ -54,6 +54,12 @@ export default function AffiliateSupportPage() {
   const [typingUser, setTypingUser] = useState('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingClearTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedTicketRef = useRef<any>(selectedTicket);
+
+  useEffect(() => {
+    selectedTicketRef.current = selectedTicket;
+  }, [selectedTicket]);
 
   const fetchTickets = useCallback(async (isManual = false) => {
     try {
@@ -85,17 +91,21 @@ export default function AffiliateSupportPage() {
     }
   }, []);
 
-  const fetchTicketDetail = useCallback(async (ticketId: string) => {
+  const fetchTicketDetail = useCallback(async (ticketId: string, showLoading = true) => {
     try {
-      setLoadingDetail(true);
+      if (showLoading) setLoadingDetail(true);
       const res = await affiliateApi.get(`/support/${ticketId}`);
       if (res.data?.data) {
-        setSelectedTicket(res.data.data);
+        const detail = res.data.data;
+        setSelectedTicket(detail);
+        setTickets((prev) =>
+          prev.map((t) => (t._id === ticketId ? { ...t, ...detail } : t))
+        );
       }
     } catch {
       toast.error('Failed to load ticket conversation');
     } finally {
-      setLoadingDetail(false);
+      if (showLoading) setLoadingDetail(false);
     }
   }, []);
 
@@ -104,52 +114,73 @@ export default function AffiliateSupportPage() {
   }, [fetchTickets]);
 
   useEffect(() => {
-    if (!socket) return;
-    const handleRefresh = () => {
-      fetchTickets();
-      if (selectedTicket?._id) {
-        fetchTicketDetail(selectedTicket._id);
-      }
-    };
-    socket.on('refresh_tickets', handleRefresh);
-    return () => {
-      socket.off('refresh_tickets', handleRefresh);
-    };
-  }, [socket, fetchTickets, fetchTicketDetail, selectedTicket?._id]);
-
-  useEffect(() => {
     if (!socket || !selectedTicket?.ticketId) return;
-    socket.emit('join_ticket', selectedTicket.ticketId);
+    const currentTicketId = selectedTicket.ticketId;
+    socket.emit('join_ticket', currentTicketId);
 
     const handleNewMessage = (msg: any) => {
+      // Clear typing indicator since the new message has arrived
+      setIsOtherTyping(false);
+      setTypingUser('');
+      if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+
       setSelectedTicket((prev: any) => {
         if (!prev) return prev;
-        const exists = (prev.messages || []).some((m: any) => m._id === msg._id);
+        const exists = (prev.messages || []).some(
+          (m: any) =>
+            (m._id && msg._id && m._id === msg._id) ||
+            (m.message === msg.message &&
+              m.senderType === msg.senderType &&
+              Math.abs(new Date(m.createdAt || 0).getTime() - new Date(msg.createdAt || 0).getTime()) < 3000)
+        );
         if (exists) return prev;
         return {
           ...prev,
           messages: [...(prev.messages || []), msg],
+          updatedAt: msg.createdAt || new Date().toISOString(),
         };
       });
-      fetchTickets();
+
+      // Update sidebar ticket list in memory without full-page refetch or flicker
+      setTickets((prevList) =>
+        prevList.map((t) =>
+          t.ticketId === msg.ticketId || t._id === selectedTicketRef.current?._id
+            ? {
+                ...t,
+                messages: [...(t.messages || []), msg],
+                updatedAt: msg.createdAt || new Date().toISOString(),
+              }
+            : t
+        )
+      );
     };
 
     const handleStatusChanged = (status: string) => {
       setSelectedTicket((prev: any) => (prev ? { ...prev, status } : prev));
-      fetchTickets();
+      setTickets((prevList) =>
+        prevList.map((t) =>
+          t.ticketId === selectedTicketRef.current?.ticketId ? { ...t, status } : t
+        )
+      );
     };
 
     const handleTypingStart = (data: any) => {
-      if (data?.ticketId === selectedTicket.ticketId) {
+      if (data?.ticketId === selectedTicketRef.current?.ticketId) {
         setIsOtherTyping(true);
-        setTypingUser(data.senderName || 'MASH ECO Support');
+        setTypingUser(data.senderName || 'MASH ECO Support Team');
+        if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+        typingClearTimerRef.current = setTimeout(() => {
+          setIsOtherTyping(false);
+          setTypingUser('');
+        }, 3500);
       }
     };
 
     const handleTypingEnd = (data: any) => {
-      if (data?.ticketId === selectedTicket.ticketId) {
+      if (data?.ticketId === selectedTicketRef.current?.ticketId) {
         setIsOtherTyping(false);
         setTypingUser('');
+        if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
       }
     };
 
@@ -159,19 +190,20 @@ export default function AffiliateSupportPage() {
     socket.on('typing_end', handleTypingEnd);
 
     return () => {
-      socket.emit('leave_ticket', selectedTicket.ticketId);
+      socket.emit('leave_ticket', currentTicketId);
       socket.off('new_message', handleNewMessage);
       socket.off('status_changed', handleStatusChanged);
       socket.off('typing_start', handleTypingStart);
       socket.off('typing_end', handleTypingEnd);
       setIsOtherTyping(false);
       setTypingUser('');
+      if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
     };
-  }, [socket, selectedTicket?.ticketId, fetchTickets]);
+  }, [socket, selectedTicket?.ticketId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedTicket?.messages]);
+  }, [selectedTicket?.messages, isOtherTyping]);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,10 +258,13 @@ export default function AffiliateSupportPage() {
         message: replyText.trim(),
       });
       if (res.data?.data) {
-        setSelectedTicket(res.data.data);
+        const updated = res.data.data;
+        setSelectedTicket(updated);
+        setTickets((prevList) =>
+          prevList.map((t) => (t._id === updated._id ? { ...t, ...updated } : t))
+        );
       }
       setReplyText('');
-      fetchTickets();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send reply');
     } finally {
@@ -262,6 +297,14 @@ export default function AffiliateSupportPage() {
     }
   };
 
+  const handleSelectTicket = (item: any) => {
+    if (selectedTicket?._id === item._id) return;
+    setSelectedTicket(item);
+    if (!item.messages || item.messages.length <= 1) {
+      fetchTicketDetail(item._id, false);
+    }
+  };
+
   const handleToggleStatus = async (nextStatus: 'RESOLVED' | 'OPEN') => {
     if (!selectedTicket?._id) return;
     try {
@@ -270,13 +313,15 @@ export default function AffiliateSupportPage() {
       });
       if (res.data?.data) {
         setSelectedTicket((prev: any) => ({ ...prev, status: nextStatus }));
+        setTickets((prevList) =>
+          prevList.map((t) => (t._id === selectedTicket._id ? { ...t, status: nextStatus } : t))
+        );
       }
       toast.success(
         lang === 'bn'
           ? `টিকেট স্ট্যাটাস ${nextStatus}-এ আপডেট হয়েছে`
           : `Ticket marked as ${nextStatus}`
       );
-      fetchTickets();
     } catch {
       toast.error('Failed to update ticket status');
     }
@@ -487,7 +532,7 @@ export default function AffiliateSupportPage() {
                 return (
                   <div
                     key={item._id}
-                    onClick={() => fetchTicketDetail(item._id)}
+                    onClick={() => handleSelectTicket(item)}
                     className={`p-4 cursor-pointer transition-colors flex items-center justify-between gap-3 ${
                       isSelected
                         ? 'bg-sky-50/70 border-l-4 border-l-[#0284c7]'
@@ -646,14 +691,16 @@ export default function AffiliateSupportPage() {
                   })
                 )}
                 {isOtherTyping && (
-                  <div className="flex items-center gap-2 text-xs text-slate-500 italic px-3 py-1.5 bg-white rounded-xl w-fit border border-slate-200 shadow-2xs animate-pulse">
+                  <div className="flex items-center gap-2.5 text-xs text-slate-500 italic px-3.5 py-2 bg-white rounded-xl w-fit border border-slate-200/90 shadow-2xs animate-pulse">
                     <div className="flex gap-1 items-center">
                       <span className="w-1.5 h-1.5 bg-[#0284c7] rounded-full animate-bounce [animation-delay:-0.3s]" />
                       <span className="w-1.5 h-1.5 bg-[#0284c7] rounded-full animate-bounce [animation-delay:-0.15s]" />
                       <span className="w-1.5 h-1.5 bg-[#0284c7] rounded-full animate-bounce" />
                     </div>
-                    <span className="font-medium text-slate-600">
-                      {typingUser || 'MASH ECO Support'}{' '}
+                    <span className="font-semibold text-slate-700">
+                      {typingUser === 'Admin' ? 'MASH ECO Support Team' : (typingUser || 'MASH ECO Support Team')}{' '}
+                    </span>
+                    <span className="text-slate-500">
                       {lang === 'bn' ? 'টাইপ করছেন...' : 'is typing...'}
                     </span>
                   </div>
