@@ -6,10 +6,9 @@ const cleanEnv = (val?: string) => (val ? val.split('#')[0].trim() : '');
 const rawBackendUrl =
   cleanEnv(process.env.BACKEND_INTERNAL_URL) ||
   cleanEnv(process.env.API_URL) ||
-  'http://127.0.0.1:8000';
+  'http://localhost:8000';
 
 const backendUrl = rawBackendUrl
-  .replace('://localhost:', '://127.0.0.1:')
   .replace(/\/api(\/v\d+)?\/?$/, '')
   .replace(/\/$/, '');
 
