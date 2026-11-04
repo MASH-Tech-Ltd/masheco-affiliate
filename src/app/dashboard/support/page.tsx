@@ -116,13 +116,33 @@ export default function AffiliateSupportPage() {
   useEffect(() => {
     if (!socket || !selectedTicket?.ticketId) return;
     const currentTicketId = selectedTicket.ticketId;
-    socket.emit('join_ticket', currentTicketId);
+    const currentMongoId = selectedTicket._id;
+
+    const joinRooms = () => {
+      socket.emit('join_ticket', currentTicketId);
+      if (currentMongoId) {
+        socket.emit('join_ticket', currentMongoId);
+      }
+    };
+
+    joinRooms();
+    socket.on('connect', joinRooms);
 
     const handleNewMessage = (msg: any) => {
       // Clear typing indicator since the new message has arrived
       setIsOtherTyping(false);
       setTypingUser('');
       if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+
+      // Verify message is for this ticket
+      const isForTicket =
+        !msg.ticketId ||
+        msg.ticketId === currentTicketId ||
+        msg.ticketId === `#${currentTicketId}` ||
+        msg.ticketMongoId === currentMongoId ||
+        msg.ticketId === currentMongoId;
+
+      if (!isForTicket) return;
 
       setSelectedTicket((prev: any) => {
         if (!prev) return prev;
@@ -144,10 +164,15 @@ export default function AffiliateSupportPage() {
       // Update sidebar ticket list in memory without full-page refetch or flicker
       setTickets((prevList) =>
         prevList.map((t) =>
-          t.ticketId === msg.ticketId || t._id === selectedTicketRef.current?._id
+          t.ticketId === currentTicketId ||
+          t._id === currentMongoId ||
+          t.ticketId === msg.ticketId ||
+          t._id === msg.ticketMongoId
             ? {
                 ...t,
-                messages: [...(t.messages || []), msg],
+                messages: (t.messages || []).some((m: any) => m._id === msg._id)
+                  ? t.messages
+                  : [...(t.messages || []), msg],
                 updatedAt: msg.createdAt || new Date().toISOString(),
               }
             : t
@@ -159,13 +184,13 @@ export default function AffiliateSupportPage() {
       setSelectedTicket((prev: any) => (prev ? { ...prev, status } : prev));
       setTickets((prevList) =>
         prevList.map((t) =>
-          t.ticketId === selectedTicketRef.current?.ticketId ? { ...t, status } : t
+          t.ticketId === currentTicketId || t._id === currentMongoId ? { ...t, status } : t
         )
       );
     };
 
     const handleTypingStart = (data: any) => {
-      if (data?.ticketId === selectedTicketRef.current?.ticketId) {
+      if (data?.ticketId === currentTicketId || data?.ticketId === currentMongoId) {
         setIsOtherTyping(true);
         setTypingUser(data.senderName || 'MASH ECO Support Team');
         if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
@@ -177,7 +202,7 @@ export default function AffiliateSupportPage() {
     };
 
     const handleTypingEnd = (data: any) => {
-      if (data?.ticketId === selectedTicketRef.current?.ticketId) {
+      if (data?.ticketId === currentTicketId || data?.ticketId === currentMongoId) {
         setIsOtherTyping(false);
         setTypingUser('');
         if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
@@ -191,6 +216,10 @@ export default function AffiliateSupportPage() {
 
     return () => {
       socket.emit('leave_ticket', currentTicketId);
+      if (currentMongoId) {
+        socket.emit('leave_ticket', currentMongoId);
+      }
+      socket.off('connect', joinRooms);
       socket.off('new_message', handleNewMessage);
       socket.off('status_changed', handleStatusChanged);
       socket.off('typing_start', handleTypingStart);
@@ -199,7 +228,7 @@ export default function AffiliateSupportPage() {
       setTypingUser('');
       if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
     };
-  }, [socket, selectedTicket?.ticketId]);
+  }, [socket, selectedTicket?.ticketId, selectedTicket?._id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

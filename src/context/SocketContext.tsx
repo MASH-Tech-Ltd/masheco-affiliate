@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
+import { affiliateCache } from '@/utils/affiliateCache';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -36,70 +37,71 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    const storedUser =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('affiliate_user') || sessionStorage.getItem('affiliate_user')
-        : null;
+    const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/reset-password';
 
-    if (!storedUser) {
-      if (globalSocket) {
-        globalSocket.disconnect();
-        globalSocket.close();
-        globalSocket = null;
+    const checkAuthAndConnect = () => {
+      const storedUser =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('affiliate_user') || sessionStorage.getItem('affiliate_user')
+          : null;
+
+      let user: any = null;
+      if (storedUser) {
+        try {
+          user = JSON.parse(storedUser);
+        } catch {}
+      } else if (affiliateCache.me?.user) {
+        user = affiliateCache.me.user;
       }
-      currentJoinedUserId = null;
-      setSocket(null);
-      setIsConnected(false);
-      return;
-    }
 
-    let user: any = null;
-    try {
-      user = JSON.parse(storedUser);
-    } catch {}
-
-    if (currentJoinedUserId && currentJoinedUserId !== user?._id) {
-      if (globalSocket) {
-        globalSocket.disconnect();
-        globalSocket.close();
-        globalSocket = null;
+      if (isAuthPage && !user) {
+        if (globalSocket) {
+          globalSocket.disconnect();
+          globalSocket.close();
+          globalSocket = null;
+        }
+        currentJoinedUserId = null;
+        setSocket(null);
+        setIsConnected(false);
+        return;
       }
-      currentJoinedUserId = null;
-    }
 
-    if (!globalSocket) {
-      const wsUrl = getWsUrl();
-      globalSocket = io(wsUrl, {
-        addTrailingSlash: false,
-        autoConnect: true,
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 10000,
-      });
-    }
+      if (!globalSocket) {
+        const wsUrl = getWsUrl();
+        globalSocket = io(wsUrl, {
+          addTrailingSlash: false,
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: Infinity,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 10000,
+        });
+      }
 
-    const currentSocket = globalSocket;
-    if (!currentSocket.connected) {
-      currentSocket.connect();
-    }
+      const currentSocket = globalSocket;
+      if (!currentSocket.connected) {
+        currentSocket.connect();
+      }
 
-    setSocket(currentSocket);
+      setSocket(currentSocket);
+      setIsConnected(currentSocket.connected);
 
-    const joinRooms = () => {
-      if (!user?._id) return;
-      if (currentJoinedUserId !== user._id) {
+      if (user?._id && currentJoinedUserId !== user._id) {
         currentJoinedUserId = user._id;
         currentSocket.emit('join_user_room', user._id);
-        if (user?.affiliateId) {
-          currentSocket.emit('join_affiliate_room', user.affiliateId);
+        const affId = user.affiliateId || affiliateCache.me?.affiliate?._id;
+        if (affId) {
+          currentSocket.emit('join_affiliate_room', affId);
         }
       }
     };
 
+    checkAuthAndConnect();
+    const interval = setInterval(checkAuthAndConnect, 2000);
+
     const onConnect = () => {
       setIsConnected(true);
-      joinRooms();
+      checkAuthAndConnect();
     };
 
     const onDisconnect = () => {
@@ -107,17 +109,17 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       currentJoinedUserId = null;
     };
 
-    if (currentSocket.connected) {
-      setIsConnected(true);
-      joinRooms();
+    if (globalSocket) {
+      globalSocket.on('connect', onConnect);
+      globalSocket.on('disconnect', onDisconnect);
     }
 
-    currentSocket.on('connect', onConnect);
-    currentSocket.on('disconnect', onDisconnect);
-
     return () => {
-      currentSocket.off('connect', onConnect);
-      currentSocket.off('disconnect', onDisconnect);
+      clearInterval(interval);
+      if (globalSocket) {
+        globalSocket.off('connect', onConnect);
+        globalSocket.off('disconnect', onDisconnect);
+      }
     };
   }, [pathname]);
 
