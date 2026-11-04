@@ -408,3 +408,4 @@ export default function AffiliateNotificationsPage() {
     </div>
   );
 }
+

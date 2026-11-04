@@ -14,3 +14,4 @@ export async function PATCH(req: NextRequest) {
     requireAuth: true,
   });
 }
+
