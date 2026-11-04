@@ -77,7 +77,7 @@ export default function SupportDetailsPage() {
 
         if (!data?.ticketId || cleanDataId === cleanCurId || cleanDataId === curMongo) {
           setIsTyping(true);
-          setTypingUser(data.senderName || 'Support Team');
+          setTypingUser(lang === 'bn' ? 'সাপোর্ট টিম' : 'Support Team');
         }
       };
 
@@ -303,8 +303,7 @@ export default function SupportDetailsPage() {
               />
             </span>
             <span>
-              {typingUser || (lang === 'bn' ? 'সাপোর্ট টিম' : 'Support Team')}{' '}
-              {lang === 'bn' ? 'টাইপ করছে...' : 'is typing...'}
+              {lang === 'bn' ? 'সাপোর্ট টিম টাইপ করছে...' : 'Support Team is typing...'}
             </span>
           </div>
         )}
