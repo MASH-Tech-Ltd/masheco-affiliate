@@ -228,20 +228,6 @@ export default function SupportDetailsPage() {
                 <CircleDot className="w-3 h-3" />
                 {ticket.status}
               </span>
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
-                  isConnected
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : 'bg-slate-50 text-slate-500 border-slate-200'
-                }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
-                  }`}
-                />
-                {isConnected ? 'LIVE CHAT' : 'OFFLINE'}
-              </span>
             </div>
             <div className="text-xs sm:text-sm text-slate-500 flex items-center gap-2 flex-wrap">
               <span className="font-mono font-bold text-slate-600">
@@ -269,7 +255,7 @@ export default function SupportDetailsPage() {
                 className={`flex ${isAffiliate ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3.5 shadow-xs ${
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 shadow-xs break-words [overflow-wrap:anywhere] ${
                     isAffiliate
                       ? 'bg-[#0284c7] text-white rounded-br-sm'
                       : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'
@@ -289,7 +275,7 @@ export default function SupportDetailsPage() {
                       ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm sm:text-[15px] leading-relaxed">
+                  <p className="whitespace-pre-wrap text-sm sm:text-[15px] leading-relaxed break-words [overflow-wrap:anywhere] select-text">
                     {msg.message}
                   </p>
                 </div>
