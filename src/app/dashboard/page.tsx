@@ -162,8 +162,8 @@ export default function AffiliateOverviewPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Top Hero Banner: Referral Link & Code Sharing Hub */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#122846] via-[#163156] to-[#0284c7] text-white p-4 sm:p-6 lg:p-7 shadow-md border border-[#1e3a5f]">
+      {/* Top Hero Banner: Referral Link & Code Sharing Hub (Hidden below md for mobile-friendly view) */}
+      <div className="hidden md:block relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#122846] via-[#163156] to-[#0284c7] text-white p-4 sm:p-6 lg:p-7 shadow-md border border-[#1e3a5f]">
         <div
           className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
