@@ -44,12 +44,33 @@ export async function fetchBackendUrl(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
   );
 
-  const clientIp =
-    req.headers.get('cf-connecting-ip') ||
-    req.headers.get('x-forwarded-for') ||
-    req.headers.get('x-real-ip') ||
-    '127.0.0.1';
-  headers.set('X-Forwarded-For', clientIp);
+  // Strip any client-supplied spoof headers and forward validated visitor IP via x-tenant-client-ip
+  headers.delete('x-tenant-client-ip');
+  headers.delete('x-mash-edge');
+  headers.delete('x-client-ip');
+
+  const rawCandidates = [
+    req.headers.get('cf-connecting-ip'),
+    req.headers.get('x-real-ip'),
+    req.headers.get('x-forwarded-for')?.split(',')[0],
+  ];
+  const clientIp = rawCandidates
+    .map((v) => v?.trim().replace(/^::ffff:/i, '') || '')
+    .find(
+      (ip) =>
+        ip &&
+        !ip.includes(',') &&
+        !ip.includes(' ') &&
+        ip !== '127.0.0.1' &&
+        ip !== '::1' &&
+        !ip.startsWith('10.') &&
+        !ip.startsWith('192.168.') &&
+        !/^172\.(1[6-9]|2\d|3[01])\./.test(ip),
+    );
+  if (clientIp) {
+    headers.set('x-tenant-client-ip', clientIp);
+    headers.set('X-Forwarded-For', clientIp);
+  }
 
   const requestInit: RequestInit = {
     ...init,
